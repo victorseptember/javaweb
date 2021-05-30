@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>CipherTextRetrieve</title>
+    <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/mdui@1.0.1/dist/css/mdui.min.css"
+            integrity="sha384-cLRrMq39HOZdvE0j6yBojO4+1PrHfB7a9l5qLcmRm/fiWXYY+CndJPmyu5FV/9Tw"
+            crossorigin="anonymous"
+    />
+    <script
+            src="https://cdn.jsdelivr.net/npm/mdui@1.0.1/dist/js/mdui.min.js"
+            integrity="sha
+
+            384-gCMZcshYKOGRX9r6wbDrvF+TcCCswSHFucUzUPwka+Gr+uHgjlYvkABr95TCOz3A"
+            crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/node-forge@0.7.0/dist/forge.min.js"></script>
+</head>
+<body>
+<div class="mudi-container" >
+    <div class="mdui-dialog" id="dialog">
+        <div class="mdui-dialog-content">
+            <div class="mdui-dialog-title">设计安全口令方法</div>
+            1、口令短语+字符替代；<br/><br/>
+            2、尽量使用大写字母、小写字母与数字组合的方式；<br/><br/>
+            3、口令中不能包含自己的个人隐私信息，例如名字缩写、生日、身份证号码等；<br/><br/>
+        </div>
+        <div class="mdui-dialog-actions">
+            <button class="mdui-btn mdui-ripple " mdui-dialog-close>OK</button>
+        </div>
+    </div>
+    <div style="position: relative;left: 50%;top: 50%; transform: translateX(-50%) translateY(30%);">
+        <div class="mdui-row" style="display: flex;justify-content: center;">
+            <div class="mdui-col-xs-6">
+                <form method="post">
+                    <div class="mdui-textfield mdui-textfield-floating-label">
+                        <label class="mdui-textfield-label">User name</label>
+                        <input id="userName" class="mdui-textfield-input" name="username" type="text" required/>
+                        <div class="mdui-textfield-error">用户名不能为空</div>
+                    </div>
+                    <div class="mdui-textfield mdui-textfield-floating-label">
+                        <label class="mdui-textfield-label">Password</label>
+                        <input id="passwd" class="mdui-textfield-input" name="password" type="password" required/>
+                        <div class="mdui-textfield-error">密码不能为空</div>
+                    </div>
+                    <button class="mdui-btn mdui-ripple" onclick="getData()">submit</button>
+                </form>
+                <div class="mdui-typo" style="margin-top: 50px;">
+                    <a mdui-dialog="{target: '#dialog'}"><small><ins>如何设计安全口令？</ins></small></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    var factor;
+    var x, y;
+    var bits = 1025;
+    var e, n;
+    forge.prime.generateProbablePrime(bits, function (err, num) {
+        // console.log(typeof num === 'bigint');
+        factor = BigInt('0x' + num.toString(16));
+        // console.log('factor:'+factor.toString());
+
+    });
+
+    function getData() {
+        var user, passwd;
+        user = document.getElementById("userName").value;
+        passwd = document.getElementById("passwd").value;
+        var hashHex = md5(user, passwd);  //  十六进制hash值
+        var hash = BigInt('0x' + hashHex);
+
+        var hashPreBin = hexToBinary_2(hashHex);  //  hash值前2bytes前缀
+        
+        read();  //  获取公钥与模数
+        // alert("hash:" + hash.toString());
+        console.log("e:" + e.toString());
+        console.log("n:" + n.toString());
+        var blindMsg = hash * (modPow(factor,e,n)) % n;  // blind
+        console.log("blindMsg:"+blindMsg.toString());
+        var ajax;
+        if (window.XMLHttpRequest) {
+            ajax = new XMLHttpRequest();
+        } else {
+            ajax = new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        ajax.onreadystatechange = function () {
+            if (ajax.readyState == 4) {
+                if (ajax.status == 200) {
+                    console.log("请求成功");
+                    eval("var list =" + ajax.responseText);
+                    console.log(list);
+                    // var result = ajax.responseText;
+                    verdict(list);
+                }
+            } 
+        }
+        //post发送请求服务端无法收到参数
+        // ajax.open("post","check",false);  //  异步
+        // ajax.setRequestHeader("Content-Type","application/x-www-form-urlencoded");
+        // ajax.send("blindMsg = " + blindMsg.toString() + "& hashPrefix = " + hashPreBin);
+
+        ajax.open("get","check?blindMsg="+blindMsg.toString()+"&hashPrefix="+hashPreBin,false);  //  同步
+        ajax.send(null);
+
+    }
+
+    function verdict(list) {
+        var blind = BigInt(list[0]);  //  blind:Hab
+        console.log("Hab:" + blind.toString());
+        var ans;
+        if (modInverse(factor, n) != 1){
+            window.alert("失败");
+        }else {
+            var a = factor * x % n;
+            console.log("a:" + a.toString());
+            if (x < 0n) {
+                x = x + n;
+                console.log("x < 0");
+            }
+            console.log("x:" + x.toString());
+            var temp = blind * x % n;
+            ans = modPow(temp,e,n);  //  客户端解盲出来的Hb
+            console.log("unblind=" + ans.toString());
+        }
+        var len = list.length;
+        for (var i = 1; i < len; i++) {
+            var Hb = BigInt(list[i]);
+            if (Hb == ans) {
+                window.alert("密码泄露！请及时更换安全密码。");
+                return;
+            }
+        }
+        window.alert("密码安全!");
+    }
+
+    function md5(user, passwd) {
+        var md = forge.md.md5.create();
+        md.update(user + passwd);
+        return md.digest().toHex();
+    }
+
+    /**
+     * return two bytes prefix of the binary string
+     * @param hexString
+     */
+    function hexToBinary_2(hexString) {
+        var sub_hex = hexString.substring(0, 6);
+        var temp = parseInt(sub_hex, 16);
+        var sub_bin = temp.toString(2);
+
+        while (sub_bin.length < 24)
+            sub_bin = '0' + sub_bin;
+        // console.log(sub_bin);
+        return sub_bin.substring(0,16);
+    }
+
+    /**
+     * x is inverse element of a about m
+     * @param a
+     * @param m
+     */
+    function modInverse(a, m) {
+        if (!m) {
+            x = BigInt(1);
+            y = BigInt(0);
+            return a;
+        }
+        var gcd = modInverse(m, a%m);
+        var temp, k;
+        k = a / m;
+        temp = x;
+        x = y;
+        y = temp - k*y;
+        return gcd;
+    }
+
+    function modPow(a, b, c) {  //a^b(mod c)
+        var A = BigInt(1);  //结果
+        var T = a % c;
+        while (b != 0) {
+            if (b & 1n) {
+                A = (A * T) % c;
+            }
+            b = b >> 1n;
+            T = (T * T) % c;
+        }
+        return A;
+    }
+
+
+    function readFile(url) {
+        var xmlhttp;
+        if (window.XMLHttpRequest) {
+            xmlhttp = new XMLHttpRequest();
+        } else {
+            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        xmlhttp.onreadystatechange = function () {
+            if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                console.log('读取的数据 ==== ', xmlhttp.responseText);
+                return xmlhttp.responseText;
+            }
+        };
+        xmlhttp.open("GET", url, false);  //  false:同步
+        xmlhttp.send();
+        console.log("==1==");
+        return xmlhttp.responseText;
+    }
+    
+    function read() {
+        //http://8.136.194.11:8080/web/publickey.txt
+        var file1 = readFile("http://8.136.194.11:8080/web/publickey.txt");
+        console.log("file1:" + file1);
+        e = BigInt(file1);
+        var file2 = readFile("http://8.136.194.11:8080/web/modulus.txt");
+        console.log("file2:" + file2);
+        n = BigInt(file2);
+    }
+
+</script>
+</html>

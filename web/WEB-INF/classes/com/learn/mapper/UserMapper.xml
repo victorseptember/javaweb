@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--namespace为接口的全路径-->
+<mapper namespace="com.learn.mapper.UserMapper">
+
+    <!--  resultMap为手动映射配置  <id>为表主键属性 <result>为表其他属性 -->
+    <resultMap id="userMap" type="com.learn.login.pojo.User">
+        <id column="id" property="uid"></id>
+        <result column="uname" property="uname"></result>
+        <result column="pwd" property="pwd"></result>
+        <result column="sex" property="sex"></result>
+        <result column="age" property="age"></result>
+        <result column="birth" property="birth"></result>
+    </resultMap>
+
+    <select id="selAll" resultMap="userMap">
+        select * from t_user
+    </select>
+
+    <select id="selByAgeAndSex" resultType="com.learn.login.pojo.User" >
+        select id uid,uname,age,sex,birth,pwd from t_user where age=#{param1} and sex=#{param2}
+    </select>
+<!--    <insert id="ins" parameterType="com.learn.login.pojo.User">-->
+<!--        insert into t_user values (#{uid},#{uname},#{pwd},#{sex},#{age},#{birth})-->
+<!--    </insert>-->
+</mapper>

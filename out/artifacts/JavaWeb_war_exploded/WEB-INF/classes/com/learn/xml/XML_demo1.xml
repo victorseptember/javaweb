@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<goodlist>
+<!--    注释-->
+    <good id="1001" birthday="2019-10-01">
+        <price>33</price>
+        <name>橘子</name>
+        <place>广州</place>
+    </good>
+    <good id="1002">
+        <price>50</price>
+        <name>苹果</name>
+        <place>北京</place>
+    </good>
+    <good id="1003">
+        <price>44</price>
+        <name>芒果</name>
+        <place>杭州</place>
+    </good>
+    <meat>
+        <price>23</price>
+        <name>猪肉</name>
+        <place>丰城</place>
+    </meat>
+</goodlist>

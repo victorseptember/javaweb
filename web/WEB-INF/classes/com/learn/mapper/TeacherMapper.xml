@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--namespace为接口的全路径-->
+<mapper namespace="com.learn.mapper.TeacherMapper">
+
+    <resultMap id="teacherMap" type="com.learn.pojo.Teacher">
+        <id property="tno" column="tno"></id>
+        <result column="tbirthday" property="tbirth"></result>
+        <!-- 如果关联一个对象 -->
+        <association property="course" select="com.learn.mapper.CourseMapper.selByTno" column="tno"></association>
+    </resultMap>
+    <!-- 使用resultMap进行N+1次查询 -->
+    <select id="selAll" resultMap="teacherMap">
+        select * from teacher;
+    </select>
+
+    <!-- 使用AutoMapping特性进行多表联合查询（只适用于单个对象，集合对象无效） -->
+    <select id="selAll2" resultType="com.learn.pojo.Teacher">
+        select t.tno tno, tname, tsex, tbirthday tbirth, prof, depart,
+         c.tno `course.tno`, cname `course.cname`, cno `course.cno` from teacher t,course c where t.tno = c.tno
+    </select>
+</mapper>
